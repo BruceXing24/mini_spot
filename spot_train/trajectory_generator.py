@@ -9,11 +9,11 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 class Bezier:
-    def __init__(self,step_length = 0.1, Tswing = 0.5,Tsupport = 0.5 ):
+    def __init__(self,step_length = 0.05,height = 0.05, Tswing = 0.5,Tsupport = 0.5 ):
         self.Tswing = Tswing   # unit = s
         self.Tsupport = Tsupport  # unit = s
         self.step_length  = step_length
-
+        self.height = height
         # theta1 =-30 theta2=90
         self.initial_x = -0.05
         self.initial_y = 0.045
@@ -23,8 +23,8 @@ class Bezier:
 
         # transfer to world coordinate
         self.P0 = np.array([self.initial_x,                                    self.initial_y,  0   + self.initial_z])
-        self.P1 = np.array([self.initial_x + self.step_length/10    ,          self.initial_y,  0.1 + self.initial_z])
-        self.P2 = np.array([self.initial_x + self.step_length * 9/10,          self.initial_y,  0.1 + self.initial_z])
+        self.P1 = np.array([self.initial_x + self.step_length/10    ,          self.initial_y,  height + self.initial_z])
+        self.P2 = np.array([self.initial_x + self.step_length * 9/10,          self.initial_y,  height + self.initial_z])
         self.P3 = np.array([self.initial_x + self.step_length,                 self.initial_y,  0   + self.initial_z])
 
 
