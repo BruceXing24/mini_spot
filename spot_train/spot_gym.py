@@ -278,6 +278,28 @@ class Spot_gym(gym.Env):
         return all_episode_reward
 
 
+    def test_model(self, model, test_round,test_speed, ):
+        all_episode_reward = []
+        height_set = []
+        for i in range(test_round):
+            episode_reward = 0
+            obs = self.reset()
+            while True:
+                time.sleep(test_speed)
+                action = model.predict(obs)
+                obs, reward, done, _ = self.step(action[0])
+                episode_reward += reward
+                if done:
+                    break
+            all_episode_reward.append(episode_reward)
+            print("episode reward===={}".format(episode_reward))
+            self.return_reward_details()
+            print(self.reward_detail_dict)
+        all_episode_reward = np.array(all_episode_reward)
+        print("all_reward==={},average reward=={}".format(all_episode_reward,np.sum(all_episode_reward)/test_round ))
+        return all_episode_reward ,height_set
+
+
 if __name__ == '__main__':
     from  stable_baselines3 import PPO
     from  stable_baselines3.common.env_checker import check_env
@@ -285,7 +307,19 @@ if __name__ == '__main__':
 
     env = Spot_gym(render=True)
 
-    model = PPO(policy="MlpPolicy", env=env, verbose=1)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,tensorboard_log="./result/")
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
 
-    env.test_no_RL(model,10,0.0)
+    #-----------------training---------------#
+    # t1 = time.time()
+    # model.learn(1500000)
+    # model.save('result/train_result_150k')
+    # t2 = time.time()
+    # print(t2-t1)
+    #-----------------training---------------#
+    # env.test_no_RL(model,10,0.0)
+    # -----------------test---------------#
 
+    loaded_model = PPO.load('result/train_result_150k')
+    env.test_model(loaded_model,5,0.001)
+    # -----------------test---------------#
