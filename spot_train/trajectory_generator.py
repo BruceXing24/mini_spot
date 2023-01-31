@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-
+# inital_z = 0.19425058031242246
+# inital_x = 0.1648317935446567
 
 class Bezier:
     def __init__(self,step_length = 0.05,height = 0.05, Tswing = 0.5,Tsupport = 0.5 ):
@@ -15,9 +16,9 @@ class Bezier:
         self.step_length  = step_length
         self.height = height
         # theta1 =-30 theta2=90
-        self.initial_x = -0.05
-        self.initial_y = 0.045
-        self.initial_z = -0.165
+        self.initial_x = 0.019 - step_length/2
+        self.initial_y = 0.055
+        self.initial_z = -0.173
 
         # in fact, here should be forward kinematics
 
@@ -26,8 +27,6 @@ class Bezier:
         self.P1 = np.array([self.initial_x + self.step_length/10    ,          self.initial_y,  height + self.initial_z])
         self.P2 = np.array([self.initial_x + self.step_length * 9/10,          self.initial_y,  height + self.initial_z])
         self.P3 = np.array([self.initial_x + self.step_length,                 self.initial_y,  0   + self.initial_z])
-
-
 
     def curve_generator(self,t):
         t = t % (self.Tswing+self.Tsupport)
@@ -43,10 +42,8 @@ class Bezier:
                     3*self.P2*(t1**2)*(1-t1)+\
                     self.P3*(t1**3)
         if t> self.Tswing and t <=self.Tswing + self.Tsupport:
-            point = [self.initial_x+self.step_length - self.step_length/self.Tsupport * (t-self.Tswing),   0.045  ,  -0.165]
+            point = [self.initial_x+self.step_length - self.step_length/self.Tsupport * (t-self.Tswing),   0.055  ,  -0.173]
         return point
-
-
 
 if __name__ == '__main__':
     tg = Bezier()
@@ -58,12 +55,12 @@ if __name__ == '__main__':
     ax1 = plt.axes(projection = '3d')
 
     while(True):
-        point=tg.curve_generator(t)
+        point=tg.curve_generator(t+0.75)
         x_set.append(point[0])
         y_set.append(point[1])
         z_set.append(point[2])
         ax1.plot3D(x_set,y_set,z_set,'red')
-        ax1.set_xlim(0, 0.2)
+        ax1.set_xlim(-.1, 0.1)
         ax1.set_ylim(-.1, 0.1)
         ax1.set_zlim(-.1, 0.1)
         plt.pause(0.1)

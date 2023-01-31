@@ -29,7 +29,7 @@ class Robot(Leg):
     def get_ori(self):
         _, ori = self.pybullet_client.getBasePositionAndOrientation(self.robot)
         ori = list(self.pybullet_client.getEulerFromQuaternion(ori))
-        ori[2] = ori[2]-np.pi
+        ori[2] = ori[2]+np.pi/2
         # calibration as urdf direction need to be turned pi/2
         return ori
 

@@ -23,12 +23,13 @@ class Spot_gym(gym.Env):
             self._pybullet_client = bullet_client.BulletClient(connection_mode=p.GUI)
         else:
             self._pybullet_client = bullet_client.BulletClient()
+        self._pybullet_client.configureDebugVisualizer(p.COV_ENABLE_WIREFRAME, 0)
+        self._pybullet_client.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         self._pybullet_client.setAdditionalSearchPath(pd.getDataPath())
-        self.robot = self._pybullet_client.loadURDF("../urdf/spot_old_2.urdf",[0,0,0.3],
-                                                   useMaximalCoordinates=False,
-                                                   flags=self._pybullet_client.URDF_USE_IMPLICIT_CYLINDER,
-                                                   baseOrientation=self._pybullet_client.getQuaternionFromEuler(
-                                                        [0, 0, np.pi])
+        self.robot = self._pybullet_client.loadURDF("../urdf/spot_mini_3.urdf",[0,0,0.3],
+                                                   baseOrientation = self._pybullet_client.getQuaternionFromEuler([0, 0,-np.pi/2]),
+                                                   flags=self._pybullet_client.URDF_USE_INERTIA_FROM_FILE,
+                                                   # useFixedBase = 1
                                                    )
         self.planeID = self._pybullet_client.loadURDF("plane.urdf")
 
@@ -47,7 +48,7 @@ class Spot_gym(gym.Env):
 
         self.tg = Bezier()
 
-        self.control_frequency = 40
+        self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
 
         self.forward_weightX = 0.015
@@ -60,8 +61,8 @@ class Spot_gym(gym.Env):
 
         self.angleFromReferen = np.array([0] * 12)
 
-        self.pre_coorX  = 0.05383
-        self.pre_height = 0.1933
+        self.pre_coorX  = 0.165
+        self.pre_height = 0.194
         #
         # optimize signal
         self.opti_shoulder = np.deg2rad(5)
@@ -94,7 +95,7 @@ class Spot_gym(gym.Env):
         #                                                 [0, 0, np.pi])
         #                                             )
         self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
-                                                            ornObj=self._pybullet_client.getQuaternionFromEuler([0, 0, np.pi] ) )
+                                                            ornObj=self._pybullet_client.getQuaternionFromEuler([0, 0, -np.pi/2] ) )
         self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=1.5)
         self.spot = Robot(self.robot, self._pybullet_client)
 
@@ -102,8 +103,8 @@ class Spot_gym(gym.Env):
         self.reward_details = np.array([0.] * 5, dtype=np.float32)
         self.step_num = 0
         self.spot_leg.time_reset()
-        self.pre_coorX  = 0.05383
-        self.pre_height = 0.1933
+        self.pre_coorX  = 0.165
+        self.pre_height = 0.194
         #  ----------------------------------initial parameter------------------#
 
         while self.initial_count < 100:
@@ -176,7 +177,7 @@ class Spot_gym(gym.Env):
             random_force = np.random.uniform(-5, 5, 3)
             self._pybullet_client.applyExternalForce(objectUniqueId=self.robot, linkIndex=-1,
                                                      forceObj=[random_force[0], random_force[1], random_force[2]],
-                                                     posObj=[0.05383, 0, 0.1933],
+                                                     posObj=[0.165, 0, 0.194],
                                                      flags=self._pybullet_client.WORLD_FRAME)
 
         x1, y1, z1 = self.tg.curve_generator(self.spot_leg.t1)
@@ -260,6 +261,7 @@ class Spot_gym(gym.Env):
         done = False
         self.optimSignal = 0
         all_episode_reward = []
+
         for i in range(test_round):
             obs = self.reset()
             episode_reward = 0
@@ -267,6 +269,12 @@ class Spot_gym(gym.Env):
                 time.sleep(test_speed)
                 action = model.predict(obs)
                 obs, reward, done, _ = self.step(action[0])
+
+                # check observation space
+                # print(f'obs=={obs}')
+                # check rpy
+                # ori=self.spot.get_ori()
+                # print(f'ori=={ori}')
                 episode_reward += reward
                 if done:
                     break
@@ -308,7 +316,7 @@ if __name__ == '__main__':
     env = Spot_gym(render=True)
 
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,tensorboard_log="./result/")
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
 
     #-----------------training---------------#
     # t1 = time.time()
@@ -317,9 +325,11 @@ if __name__ == '__main__':
     # t2 = time.time()
     # print(t2-t1)
     #-----------------training---------------#
-    # env.test_no_RL(model,10,0.0)
+
+    env.test_no_RL(model,10,0)
+
     # -----------------test---------------#
 
-    loaded_model = PPO.load('result/train_result_150k')
-    env.test_model(loaded_model,5,0.001)
+    # loaded_model = PPO.load('result/train_result_150k')
+    # env.test_model(loaded_model,5,0.001)
     # -----------------test---------------#
