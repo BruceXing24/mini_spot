@@ -14,8 +14,8 @@ class Leg():
         self.l3 = knee2end
         self.Position_Gain = 1
         self.Velocity_Gain = .5
-        self.force = 3.5
-        self.Max_velocity = 6
+        self.force = 3
+        self.Max_velocity = 5
         #                    LF      RF     LB    RB
         self.joint_angle = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.t1 = 0.

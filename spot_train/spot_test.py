@@ -24,11 +24,11 @@ class Spot:
         #                                            flags=self.pybullet_client.URDF_USE_IMPLICIT_CYLINDER,
         #                                            )
         self.counter = 0
-        self.show_fre = 1./240
+        self.show_fre = 0.01
         self.leg_controller = Leg()
         self.stand_pose = [[0,np.pi/4,-np.pi/2],[0,np.pi/4,-np.pi/2],[0,np.pi/4,-np.pi/2],[0,np.pi/4,-np.pi/2]]
         self.sit_pose = [[0,0,0],[0,0,0],[0,np.pi/3,-np.pi*2/3],[0,np.pi/3,-np.pi*2/3]]
-        self.tg = Bezier(step_length=0.03,height=0.05)
+        self.tg = Bezier(step_length=0.05,height=0.05)
         self.control_fre = 50
         self.t13 =  0.0
         self.t24 = 0 - 0.5
@@ -40,18 +40,19 @@ class Spot:
         self.pybullet_client.setAdditionalSearchPath(pd.getDataPath())
         self.planeID = self.pybullet_client.loadURDF("plane.urdf")
         self.robot = self.pybullet_client.loadURDF("../urdf/spot_mini_3.urdf",
-                                                   [0, 0.15, 0],
+                                                   [0, 0.15, 0.3],
                                                    baseOrientation = self.pybullet_client.getQuaternionFromEuler([0, 0, -np.pi/2]),
                                                    flags=p.URDF_USE_INERTIA_FROM_FILE,
                                                    # useFixedBase = 1
                                                    )
         num = p.getNumJoints(self.robot)
         print(f'num=={num}')
+        self.pybullet_client.changeDynamics(self.robot,mass=3.0,linkIndex=-1)
 
 
         while True:
             if self.counter <200:
-                self.pybullet_client.setGravity(0, 0, -9.8)
+                self.pybullet_client.setGravity(0, 0, -5.8)
                 # for i in range(30):
                 #     link_info = p.getLinkState(self.robot,i)
                 #     print(f'{i}link_info{link_info[0]}')
@@ -72,7 +73,7 @@ class Spot:
             elif self.counter>=200 and self.counter<500:
                 posi, ori =  p.getBasePositionAndOrientation(self.robot)
                 # print(f"posi======{posi}")
-                self.pybullet_client.setGravity(0, 0, -8)
+                self.pybullet_client.setGravity(0, 0, -5.8)
                 self.leg_controller.positions_control2(self.robot,
                                                    self.stand_pose[0],
                                                    self.stand_pose[1],
@@ -81,10 +82,17 @@ class Spot:
                                                    )
                 self.counter += 1
                 pre_position = p.getLinkState(self.robot, self.draw_line_foot )[0]
-                time.sleep(self.show_fre)
+                # time.sleep(self.show_fre)
                 p.stepSimulation()
 
             elif self.counter >=500 and self.counter<=15000:
+                random_force = np.random.uniform(-3, 3, 3)
+                self.pybullet_client.applyExternalForce(objectUniqueId=self.robot, linkIndex=-1,
+                                                         forceObj=[random_force[0], 0, random_force[2]],
+                                                         posObj=[0.165, 0, 0.194],
+                                                         flags=self.pybullet_client.WORLD_FRAME)
+
+
                 time.sleep(self.show_fre)
                 p.stepSimulation()
                 self.pybullet_client.setGravity(0, 0,  -9.8)

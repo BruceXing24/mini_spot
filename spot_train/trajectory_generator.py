@@ -16,7 +16,7 @@ class Bezier:
         self.step_length  = step_length
         self.height = height
         # theta1 =-30 theta2=90
-        self.initial_x = 0.019 - step_length/2
+        self.initial_x = 0.019 - step_length
         self.initial_y = 0.055
         self.initial_z = -0.173
 

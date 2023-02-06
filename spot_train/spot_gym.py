@@ -12,7 +12,7 @@ from spot_robot import Robot
 from trajectory_generator import Bezier
 from spot_leg import Leg
 import time
-
+import _thread
 
 
 class Spot_gym(gym.Env):
@@ -51,11 +51,11 @@ class Spot_gym(gym.Env):
         self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
 
-        self.forward_weightX = 0.015
-        self.forward_weightY = 0.01
+        self.forward_weightX = 0.03
+        self.forward_weightY = 0.03
         self.forwardV_weight = 0.01
         self.direction_weight = -0.001
-        self.shake_weight = -0.005
+        self.shake_weight = -0.01
         self.height_weight = -0.05
         self.joint_weight = -0.001
 
@@ -66,13 +66,15 @@ class Spot_gym(gym.Env):
         #
         # optimize signal
         self.opti_shoulder = np.deg2rad(5)
-        self.opti_kneeAhid = np.deg2rad(20)
-        self.referSignal = 1.
-        self.optimSignal = 0.5
+        self.opti_kneeAhid = np.deg2rad(15)
+        self.referSignal = 1
+        self.optimSignal = .1
 
         self.reward_details = np.array([0.] * 5, dtype=np.float32)
         self.reward_detail_dict = {'forwardX': 0, 'forwardY': 0, 'forwardV_reward': 0, 'shaking_reward': 0,
                                    'height_reward': 0}
+
+
         self.step_num = 0
         self.initial_count = 0
 
@@ -96,7 +98,7 @@ class Spot_gym(gym.Env):
         #                                             )
         self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
                                                             ornObj=self._pybullet_client.getQuaternionFromEuler([0, 0, -np.pi/2] ) )
-        self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=1.5)
+        self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=3)
         self.spot = Robot(self.robot, self._pybullet_client)
 
         #  ----------------------------------initial parameter------------------#
@@ -174,7 +176,7 @@ class Spot_gym(gym.Env):
         #                           action_on_motor[6:9], action_on_motor[9:12])
 
         if self.step_num >= 0 and self.step_num <= 20:
-            random_force = np.random.uniform(-5, 5, 3)
+            random_force = np.random.uniform(-1, 1, 3)
             self._pybullet_client.applyExternalForce(objectUniqueId=self.robot, linkIndex=-1,
                                                      forceObj=[random_force[0], random_force[1], random_force[2]],
                                                      posObj=[0.165, 0, 0.194],
@@ -234,13 +236,21 @@ class Spot_gym(gym.Env):
         state = self.get_observation()
         # print(f'state==={state}')
         reward_items = self.spot.get_reward_items()
+
+
         reward = self.reward_function(reward_items)
         roll, pitch, yaw = self.spot.get_ori()
         y = self.spot.get_Global_Coor()[1]
+
+
         # condition for stop
+        xyz = self.spot.get_Global_Coor()
+        # print(f'x,y,z===={xyz[0]}{xyz[1]}{xyz[2]}')
+        # print(f'roll==={np.rad2deg(roll)},pitch=={np.rad2deg(pitch)},yaw==={np.rad2deg(yaw)}')
+
         if self.step_num > 1000:
             done = True
-        elif roll > np.deg2rad(60) or pitch > np.deg2rad(60) or yaw > np.deg2rad(60) or y > 1.:
+        elif np.abs(roll) > np.deg2rad(15) or np.abs(pitch) > np.deg2rad(25) or np.abs(yaw) > np.deg2rad(30) or y > 0.5:
             reward = -10
             done = True
         else:
@@ -269,7 +279,6 @@ class Spot_gym(gym.Env):
                 time.sleep(test_speed)
                 action = model.predict(obs)
                 obs, reward, done, _ = self.step(action[0])
-
                 # check observation space
                 # print(f'obs=={obs}')
                 # check rpy
@@ -308,28 +317,38 @@ class Spot_gym(gym.Env):
         return all_episode_reward ,height_set
 
 
+    def train(self,model,save_path,training_steps):
+        model.learn(training_steps)
+        model.save(save_path)
+
+
+
 if __name__ == '__main__':
     from  stable_baselines3 import PPO
     from  stable_baselines3.common.env_checker import check_env
 
 
     env = Spot_gym(render=True)
-
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,tensorboard_log="./result/")
-    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
-
-    #-----------------training---------------#
+    # # -----------------training---------------#
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,tensorboard_log="./result/",learning_rate= 3e-4)
     # t1 = time.time()
-    # model.learn(1500000)
-    # model.save('result/train_result_150k')
+    # model.learn(2000000)
+    # model.save('result/train_result_2m_4')
     # t2 = time.time()
     # print(t2-t1)
-    #-----------------training---------------#
+    # -----------------training---------------#
 
-    env.test_no_RL(model,10,0)
+    # # ------------------test for no rl--------#
+    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    env.test_no_RL(model,10,0.01)
+    # ------------------test for no rl--------#
+
+    # ----------------multi thread------------#
+
+    #-----------------multi thread------------#
 
     # -----------------test---------------#
-
-    # loaded_model = PPO.load('result/train_result_150k')
-    # env.test_model(loaded_model,5,0.001)
+    # loaded_model = PPO.load('result/train_result_2m_4')
+    # env.test_model(loaded_model,5,0.01)
     # -----------------test---------------#
