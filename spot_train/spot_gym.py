@@ -10,6 +10,8 @@ from gym import spaces
 import numpy as np
 from spot_robot import Robot
 from trajectory_generator import Bezier
+from  CPGenerator import CPG
+
 from spot_leg import Leg
 import time
 from terrain import Terrain
@@ -47,6 +49,8 @@ class Spot_gym(gym.Env):
             dtype=np.float64)
 
         self.tg = Bezier()
+        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.025,Tswing=0.3,Tstance=0.3)
+
 
         self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
@@ -82,7 +86,7 @@ class Spot_gym(gym.Env):
         self.terrain_generator = Terrain("random")
         self.reset_terrain_flag = True
         # 0.05382755820485801, 0, 0.19330842049777203
-        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.025)
+        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.03)
 
 
 
@@ -103,7 +107,7 @@ class Spot_gym(gym.Env):
         #                                             )
         self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
                                                             ornObj=self._pybullet_client.getQuaternionFromEuler([0, 0, -np.pi/2] ) )
-        self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=3)
+        # self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=3)
         self.spot = Robot(self.robot, self._pybullet_client)
 
         #  ----------------------------------initial parameter------------------#
@@ -187,13 +191,11 @@ class Spot_gym(gym.Env):
                                                      posObj=[0.165, 0, 0.194],
                                                      flags=self._pybullet_client.WORLD_FRAME)
 
-        x1, y1, z1 = self.tg.curve_generator(self.spot_leg.t1)
-        x2, y2, z2 = self.tg.curve_generator(self.spot_leg.t2)
-        theta1_1, theta1_2 ,theta1_3 = self.spot_leg.IK_L_2(x1, y1,  z1)
-        theta2_1, theta2_2 ,theta2_3 = self.spot_leg.IK_L_2(x2, y2,  z2)
+        angles = self.gait_generator.trot_generator(self.gait_generator.trot_timer, 'straight', 0.8)
+        angles = angles * np.pi / 180.
+        self.gait_generator.trot_timer += 2. / 100
+        self.angleFromReferen = angles
 
-        self.angleFromReferen = np.array([theta1_1, theta1_2 ,theta1_3, theta2_1, theta2_2 ,theta2_3,
-                                          theta2_1, theta2_2 ,theta2_3, theta1_1, theta1_2 ,theta1_3 ])
         action_on_motor = self.merge_action(action)
         self.spot_leg.positions_control2(self.robot, action_on_motor[0:3], action_on_motor[3:6],
                                           action_on_motor[6:9], action_on_motor[9:12])
@@ -346,17 +348,17 @@ if __name__ == '__main__':
     env = Spot_gym(render=True)
     # # -----------------training---------------#
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
-    model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
-    t1 = time.time()
-    model.learn(3000000)
-    model.save('result/train_result_2m_10')
-    t2 = time.time()
-    print(t2-t1)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
+    # t1 = time.time()
+    # model.learn(3000000)
+    # model.save('result/train_result_2m_10')
+    # t2 = time.time()
+    # print(t2-t1)
     # -----------------training---------------#
 
     # # ------------------test for no rl--------#
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
-    # env.test_no_RL(model,10,0.01)
+    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    env.test_no_RL(model,10,0.01)
     # ------------------test for no rl--------#
 
     # ----------------multi thread------------#
