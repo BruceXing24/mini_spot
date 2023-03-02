@@ -12,7 +12,7 @@ from spot_robot import Robot
 from trajectory_generator import Bezier
 from spot_leg import Leg
 import time
-import _thread
+from terrain import Terrain
 
 
 class Spot_gym(gym.Env):
@@ -51,11 +51,11 @@ class Spot_gym(gym.Env):
         self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
 
-        self.forward_weightX = 0.03
+        self.forward_weightX = 0.06
         self.forward_weightY = 0.03
         self.forwardV_weight = 0.01
         self.direction_weight = -0.001
-        self.shake_weight = -0.01
+        self.shake_weight = -0.005
         self.height_weight = -0.05
         self.joint_weight = -0.001
 
@@ -65,10 +65,10 @@ class Spot_gym(gym.Env):
         self.pre_height = 0.194
         #
         # optimize signal
-        self.opti_shoulder = np.deg2rad(5)
-        self.opti_kneeAhid = np.deg2rad(15)
+        self.opti_shoulder = np.deg2rad(10)
+        self.opti_kneeAhid = np.deg2rad(25)
         self.referSignal = 1
-        self.optimSignal = .1
+        self.optimSignal = 1
 
         self.reward_details = np.array([0.] * 5, dtype=np.float32)
         self.reward_detail_dict = {'forwardX': 0, 'forwardY': 0, 'forwardV_reward': 0, 'shaking_reward': 0,
@@ -77,10 +77,12 @@ class Spot_gym(gym.Env):
 
         self.step_num = 0
         self.initial_count = 0
+        self.train_steps = 0
 
-
+        self.terrain_generator = Terrain("random")
+        self.reset_terrain_flag = True
         # 0.05382755820485801, 0, 0.19330842049777203
-
+        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.025)
 
 
 
@@ -88,7 +90,10 @@ class Spot_gym(gym.Env):
         # ----------initialize pubullet env----------------
         # self._pybullet_client.resetSimulation()
         self._pybullet_client.setGravity(0, 0, 0)
-
+        # if self.reset_terrain_flag ==True:
+        #     self.reset_terrain()
+        #     print("reset------------------------terrain")
+        #     self.reset_terrain_flag = False
 
         # self.robot = self._pybullet_client.loadURDF("../urdf/spot_old_2.urdf", [0, 0, 0.3],
         #                                             useMaximalCoordinates=False,
@@ -230,9 +235,13 @@ class Spot_gym(gym.Env):
 
 
     def step(self, action):
+
         self.apply_action(action)
         self._pybullet_client.stepSimulation()
         self.step_num += 1
+        self.train_steps+=1
+        # if self.train_steps % 400000 ==0:
+        #     self.reset_terrain()
         state = self.get_observation()
         # print(f'state==={state}')
         reward_items = self.spot.get_reward_items()
@@ -250,7 +259,7 @@ class Spot_gym(gym.Env):
 
         if self.step_num > 1000:
             done = True
-        elif np.abs(roll) > np.deg2rad(15) or np.abs(pitch) > np.deg2rad(25) or np.abs(yaw) > np.deg2rad(30) or y > 0.5:
+        elif np.abs(roll) > np.deg2rad(45) or np.abs(pitch) > np.deg2rad(45) or np.abs(yaw) > np.deg2rad(45) or y > 0.5:
             reward = -10
             done = True
         else:
@@ -292,6 +301,7 @@ class Spot_gym(gym.Env):
             print(self.reward_detail_dict)
             all_episode_reward.append(episode_reward)
             print(f'all reward_episode is {all_episode_reward}')
+            print(f"train_steps=={self.train_steps}")
         return all_episode_reward
 
 
@@ -321,7 +331,12 @@ class Spot_gym(gym.Env):
         model.learn(training_steps)
         model.save(save_path)
 
-
+    def reset_terrain(self):
+        self._pybullet_client.removeBody(self.terrain)
+        self.terrain = Terrain("random").generate_terrain(self._pybullet_client)
+        # self._pybullet_client.changeVisualShape(self.terrain, -1, rgbaColor=[0.5, 0.5, 0, 0.5])
+        # self._pybullet_client.loadTexture("texture/grass.png")
+        self._pybullet_client.resetBasePositionAndOrientation(self.terrain, [0, 0, 0], [0, 0, 0, 1])
 
 if __name__ == '__main__':
     from  stable_baselines3 import PPO
@@ -331,17 +346,17 @@ if __name__ == '__main__':
     env = Spot_gym(render=True)
     # # -----------------training---------------#
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,tensorboard_log="./result/",learning_rate= 3e-4)
-    # t1 = time.time()
-    # model.learn(2000000)
-    # model.save('result/train_result_2m_4')
-    # t2 = time.time()
-    # print(t2-t1)
+    model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
+    t1 = time.time()
+    model.learn(3000000)
+    model.save('result/train_result_2m_10')
+    t2 = time.time()
+    print(t2-t1)
     # -----------------training---------------#
 
     # # ------------------test for no rl--------#
-    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
-    env.test_no_RL(model,10,0.01)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    # env.test_no_RL(model,10,0.01)
     # ------------------test for no rl--------#
 
     # ----------------multi thread------------#
@@ -349,6 +364,6 @@ if __name__ == '__main__':
     #-----------------multi thread------------#
 
     # -----------------test---------------#
-    # loaded_model = PPO.load('result/train_result_2m_4')
+    # loaded_model = PPO.load('result/train_result_2m_8')
     # env.test_model(loaded_model,5,0.01)
     # -----------------test---------------#
