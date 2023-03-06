@@ -11,7 +11,6 @@ import numpy as np
 from spot_robot import Robot
 from trajectory_generator import Bezier
 from  CPGenerator import CPG
-
 from spot_leg import Leg
 import time
 from terrain import Terrain
@@ -55,7 +54,7 @@ class Spot_gym(gym.Env):
         self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
 
-        self.forward_weightX = 0.06
+        self.forward_weightX = 0.1
         self.forward_weightY = 0.03
         self.forwardV_weight = 0.01
         self.direction_weight = -0.001
@@ -86,7 +85,7 @@ class Spot_gym(gym.Env):
         self.terrain_generator = Terrain("random")
         self.reset_terrain_flag = True
         # 0.05382755820485801, 0, 0.19330842049777203
-        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.03)
+        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.02)
 
 
 
@@ -116,6 +115,7 @@ class Spot_gym(gym.Env):
         self.spot_leg.time_reset()
         self.pre_coorX  = 0.165
         self.pre_height = 0.194
+        self.gait_generator.trot_timer = 0.
         #  ----------------------------------initial parameter------------------#
 
         while self.initial_count < 100:
@@ -350,8 +350,8 @@ if __name__ == '__main__':
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
     # t1 = time.time()
-    # model.learn(3000000)
-    # model.save('result/train_result_2m_10')
+    # model.learn(6000000)
+    # model.save('result/train_result_6m_te0.2')
     # t2 = time.time()
     # print(t2-t1)
     # -----------------training---------------#
@@ -366,6 +366,6 @@ if __name__ == '__main__':
     #-----------------multi thread------------#
 
     # -----------------test---------------#
-    # loaded_model = PPO.load('result/train_result_2m_8')
+    # loaded_model = PPO.load('result/train_result_6m_te0.2')
     # env.test_model(loaded_model,5,0.01)
     # -----------------test---------------#
