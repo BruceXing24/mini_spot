@@ -11,7 +11,7 @@ import spot_leg
 
 
 class CPG:
-    def __init__(self, step_length=0.05, ground_clearance=0.05, ground_penetration=0.01, Tstance=0.6, Tswing=0.4):
+    def __init__(self, step_length=0.05, ground_clearance=0.05, ground_penetration=0.01, Tstance=0.6, Tswing=0.4,initial_x = -0.01):
         self.step_length = step_length
         self.zClearSwing = ground_clearance
         self.zClearStance = ground_penetration
@@ -32,11 +32,11 @@ class CPG:
         self.spot_leg = spot_leg.Leg()
 
         # local refer to hip
-        self.init_x = -0.01  # 0.019
+        self.init_x = initial_x  # 0.019
         self.init_y = 0.055
         self.init_z = -0.173
 
-        self.leg_initalxyz = [-0.01, 0.055, -0.173]
+        self.leg_initalxyz = [self.init_x, 0.055, -0.173]
 
         self.body_width = 0.093
         self.body_length = 0.188

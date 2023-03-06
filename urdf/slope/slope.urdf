@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<robot name="slope">
+
+<material name="silver">
+  <color rgba="0.700 0.700 0.700 1.000"/>
+</material>
+
+<link name="base_link">
+  <inertial>
+    <origin xyz="-0.9393654271085459 -2.5767752549811624e-16 0.04903461526686301" rpy="0 0 0"/>
+    <mass value="2269.7772175819664"/>
+    <inertia ixx="759.0741695940202" iyy="359.9366474103033" izz="1114.0472895375956" ixy="-9.478614775238866e-13" iyz="-2.867890371716578e-14" ixz="-2.842170943040401e-14"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+</robot>

@@ -47,24 +47,23 @@ class Robot(Leg):
 
 
     def get_reward_items(self):
-        x_coor = self.get_Global_Coor()[0]
-        y_coor = self.get_Global_Coor()[1]
-        linearVxyz = self.get_linearV()
-        angulerWxyz =self.get_angularV()
-        roll_pitch = self.get_ori()[0:2]
-        height = self.get_base_height()
-        return np.hstack((x_coor, y_coor, linearVxyz, angulerWxyz, roll_pitch, height))
+        x_coor = self.get_Global_Coor()[0]   # id 0
+        y_coor = self.get_Global_Coor()[1]   #    1
+        linearVxyz = self.get_linearV()      #    2 3 4
+        angulerWxyz =self.get_angularV()     #    5 6 7
+        rpy = self.get_ori()[0:3]            #    8 9 10
+        height = self.get_base_height()      #    11
+        return np.hstack((x_coor, y_coor, linearVxyz, angulerWxyz, rpy, height))
 
     def get_observation(self):
-        #   2               3              3                  12
-        # r, p   ,  linear X,Y,Z,     angularX, Y, Z,     joint motor
-
-        roll_pitch   =  self.get_ori()[0:2]
+        #   3               3              3
+        # r, p,y   ,  linear X,Y,Z,     angularX, Y, Z,
+        rpy   =  self.get_ori()[0:3]
         linearXyz    =  self.get_linearV()
         angularXyz   =  self.get_angularV()
-        joints_angle =  self.get_motor_angle()
+        height = self.get_base_height()
 
-        return np.hstack((roll_pitch,linearXyz,angularXyz, joints_angle))
+        return np.hstack((rpy,linearXyz,angularXyz, height))
 
 
     def get_observation_dim(self):
@@ -73,7 +72,7 @@ class Robot(Leg):
 
     def get_observation_upper_bound(self):
         upper_bound = np.array([0.0] * self.get_observation_dim())
-        upper_bound[0:2] = np.pi
-        upper_bound[2:9] = np.inf
-        upper_bound[9:] = np.pi
+        upper_bound[0:3] = np.pi
+        upper_bound[3:9] = np.inf
+        upper_bound[9] = 0.5
         return upper_bound
