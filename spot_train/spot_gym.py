@@ -48,7 +48,7 @@ class Spot_gym(gym.Env):
             dtype=np.float64)
 
         self.tg = Bezier()
-        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.025,Tswing=0.3,Tstance=0.3)
+        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.03,Tswing=0.3,Tstance=0.3)
 
 
         self.control_frequency = 50
@@ -68,8 +68,8 @@ class Spot_gym(gym.Env):
         self.pre_height = 0.194
         #
         # optimize signal
-        self.opti_shoulder = np.deg2rad(10)
-        self.opti_kneeAhid = np.deg2rad(25)
+        self.opti_shoulder = np.deg2rad(5)
+        self.opti_kneeAhid = np.deg2rad(10)
         self.referSignal = 1
         self.optimSignal = 1
 
@@ -85,7 +85,7 @@ class Spot_gym(gym.Env):
         self.terrain_generator = Terrain("random")
         self.reset_terrain_flag = True
         # 0.05382755820485801, 0, 0.19330842049777203
-        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.02)
+        self.terrain = Terrain("random").generate_terrain(self._pybullet_client,0.01)
 
 
 
@@ -93,11 +93,17 @@ class Spot_gym(gym.Env):
         # ----------initialize pubullet env----------------
         # self._pybullet_client.resetSimulation()
         self._pybullet_client.setGravity(0, 0, 0)
+
+        # self._pybullet_client.resetSimulation()
         # if self.reset_terrain_flag ==True:
         #     self.reset_terrain()
         #     print("reset------------------------terrain")
         #     self.reset_terrain_flag = False
-
+        # self.robot = self._pybullet_client.loadURDF("../urdf/spot_mini_3.urdf",[0,0,0.3],
+        #                                            baseOrientation = self._pybullet_client.getQuaternionFromEuler([0, 0,-np.pi/2]),
+        #                                            flags=self._pybullet_client.URDF_USE_INERTIA_FROM_FILE,
+        #                                            # useFixedBase = 1
+        #                                            )
         # self.robot = self._pybullet_client.loadURDF("../urdf/spot_old_2.urdf", [0, 0, 0.3],
         #                                             useMaximalCoordinates=False,
         #                                             flags=p.URDF_USE_IMPLICIT_CYLINDER,
@@ -106,8 +112,10 @@ class Spot_gym(gym.Env):
         #                                             )
         self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
                                                             ornObj=self._pybullet_client.getQuaternionFromEuler([0, 0, -np.pi/2] ) )
+
+        self._pybullet_client.resetBaseVelocity(objectUniqueId = self.robot, linearVelocity = [0,0,0], angularVelocity = [0,0,0])
         # self._pybullet_client.changeDynamics(bodyUniqueId=self.robot, linkIndex=-1, mass=3)
-        self.spot = Robot(self.robot, self._pybullet_client)
+        # self.spot = Robot(self.robot, self._pybullet_client)
 
         #  ----------------------------------initial parameter------------------#
         self.reward_details = np.array([0.] * 5, dtype=np.float32)
@@ -124,9 +132,14 @@ class Spot_gym(gym.Env):
             self.spot_leg.positions_control2(self.robot, self.spot.stand_pose[0], self.spot.stand_pose[1],
                                                          self.spot.stand_pose[2], self.spot.stand_pose[3])
             self.spot.motor_angle = np.hstack((self.spot.stand_pose))
-            p.stepSimulation()
+            self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
+                                                                  ornObj=self._pybullet_client.getQuaternionFromEuler(
+                                                                      [0, 0, -np.pi / 2]))
 
-        while self.initial_count < 300:
+            self._pybullet_client.resetBaseVelocity(objectUniqueId=self.robot, linearVelocity=[0, 0, 0],
+                                                    angularVelocity=[0, 0, 0])
+            p.stepSimulation()
+        while self.initial_count < 250:
             self._pybullet_client.setGravity(0, 0, -9.8)
             self.initial_count += 1
             self.spot_leg.positions_control2(self.robot, self.spot.stand_pose[0], self.spot.stand_pose[1],
@@ -185,7 +198,7 @@ class Spot_gym(gym.Env):
         #                           action_on_motor[6:9], action_on_motor[9:12])
 
         if self.step_num >= 0 and self.step_num <= 20:
-            random_force = np.random.uniform(-1, 1, 3)
+            random_force = np.random.uniform(-0.5, 0.5, 3)
             self._pybullet_client.applyExternalForce(objectUniqueId=self.robot, linkIndex=-1,
                                                      forceObj=[random_force[0], random_force[1], random_force[2]],
                                                      posObj=[0.165, 0, 0.194],
@@ -262,7 +275,7 @@ class Spot_gym(gym.Env):
         if self.step_num > 1000:
             done = True
         elif np.abs(roll) > np.deg2rad(45) or np.abs(pitch) > np.deg2rad(45) or np.abs(yaw) > np.deg2rad(45) or y > 0.5:
-            reward = -10
+            reward = -5
             done = True
         else:
             done = False
@@ -343,29 +356,35 @@ class Spot_gym(gym.Env):
 if __name__ == '__main__':
     from  stable_baselines3 import PPO
     from  stable_baselines3.common.env_checker import check_env
-
+    from stable_baselines3.common.env_util import make_vec_env
 
     env = Spot_gym(render=True)
     # # -----------------training---------------#
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate = 3e-4)
     # t1 = time.time()
-    # model.learn(6000000)
-    # model.save('result/train_result_6m_te0.2')
+    # model.learn(2000000)
+    # model.save('result/train_result_3m_te0.1')
     # t2 = time.time()
     # print(t2-t1)
     # -----------------training---------------#
 
-    # # ------------------test for no rl--------#
-    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
-    env.test_no_RL(model,10,0.01)
+    # ------------------test for no rl--------#
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    # env.test_no_RL(model,10,0.01)
     # ------------------test for no rl--------#
 
     # ----------------multi thread------------#
 
+
+    # vec_env = make_vec_env(env,n_envs=12)
+    #
+    # model = PPO(policy="MlpPolicy", env=vec_env, verbose=1, batch_size=512)
+    # model.learn(1000000)
+
     #-----------------multi thread------------#
 
     # -----------------test---------------#
-    # loaded_model = PPO.load('result/train_result_6m_te0.2')
-    # env.test_model(loaded_model,5,0.01)
+    loaded_model = PPO.load('result/train_result_3m_te0.1')
+    env.test_model(loaded_model,5,0.005)
     # -----------------test---------------#

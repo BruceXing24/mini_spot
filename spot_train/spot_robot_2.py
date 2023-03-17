@@ -59,11 +59,10 @@ class Robot(Leg):
         #   3               3              3
         # r, p,y   ,  linear X,Y,Z,     angularX, Y, Z,
         rpy   =  self.get_ori()[0:3]
-        linearXyz    =  self.get_linearV()
         angularXyz   =  self.get_angularV()
         height = self.get_base_height()
-
-        return np.hstack((rpy,linearXyz,angularXyz, height))
+        joints_angle = self.get_motor_angle()
+        return np.hstack((rpy,angularXyz, height,joints_angle))
 
 
     def get_observation_dim(self):
@@ -73,6 +72,8 @@ class Robot(Leg):
     def get_observation_upper_bound(self):
         upper_bound = np.array([0.0] * self.get_observation_dim())
         upper_bound[0:3] = np.pi
-        upper_bound[3:9] = np.inf
-        upper_bound[9] = 0.5
+        upper_bound[3:6] = np.inf
+        upper_bound[6] = 0.5
+        upper_bound[7:] = np.pi
+
         return upper_bound

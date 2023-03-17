@@ -53,13 +53,13 @@ class Spot_gym(gym.Env):
         self.observation_space = spaces.Box(
             low=-observation_high, high=observation_high,
             dtype=np.float64)
-        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.025,Tswing=0.3,Tstance=0.3)
+        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.03,ground_penetration=0.05,Tswing=0.3,Tstance=0.3,initial_x=0.0)
 
 
         self.control_frequency = 50
         self.dt = 1./self.control_frequency  # should be related to leg control frequency
 
-        self.forward_weightX = 0.1
+        self.forward_weightX = 0.2
         self.forward_weightY = 0.03
         self.forwardV_weight = 0.01
         self.direction_weight = -0.001
@@ -76,7 +76,7 @@ class Spot_gym(gym.Env):
         self.opti_shoulder = np.deg2rad(5)
         self.opti_kneeAhid = np.deg2rad(15)
         self.referSignal = 1
-        self.optimSignal = 0.5
+        self.optimSignal = 1
 
         self.reward_details = np.array([0.] * 5, dtype=np.float32)
         self.reward_detail_dict = {'forwardX': 0, 'forwardY': 0, 'forwardV_reward': 0, 'shaking_reward': 0,
@@ -124,9 +124,16 @@ class Spot_gym(gym.Env):
             self.spot_leg.positions_control2(self.robot, self.spot.stand_pose[0], self.spot.stand_pose[1],
                                                          self.spot.stand_pose[2], self.spot.stand_pose[3])
             self.spot.motor_angle = np.hstack((self.spot.stand_pose))
+            self._pybullet_client.resetBasePositionAndOrientation(bodyUniqueId=self.robot, posObj=[0, 0, 0.3],
+                                                                  ornObj=self._pybullet_client.getQuaternionFromEuler(
+                                                                      [0, 0, -np.pi / 2]))
+
+            self._pybullet_client.resetBaseVelocity(objectUniqueId=self.robot, linearVelocity=[0, 0, 0],
+                                                    angularVelocity=[0, 0, 0])
             p.stepSimulation()
 
-        while self.initial_count < 300:
+
+        while self.initial_count < 250:
             self._pybullet_client.setGravity(0, 0, -9.8)
             self.initial_count += 1
             self.spot_leg.positions_control2(self.robot, self.spot.stand_pose[0], self.spot.stand_pose[1],
@@ -220,7 +227,7 @@ class Spot_gym(gym.Env):
         forwardY_reward = -self.forward_weightY * np.abs(y_coor)
         forwardV_reward = self.forwardV_weight * linearX / 4
         shaking_reward = self.shake_weight *     ( np.exp( -1/(Wx**2+Wy**2+Wz**2+ 1e-10)))/5+ \
-                         self.shake_weight* ( roll**2 + pitch**2)
+                         self.shake_weight* ( roll**2 + pitch**2 + yaw**2)
         height_reward = self.height_weight * (np.abs(height - self.pre_height))
 
 
@@ -252,6 +259,7 @@ class Spot_gym(gym.Env):
 
         reward = self.reward_function(reward_items)
         roll, pitch, yaw = self.spot.get_ori()
+        x = self.spot.get_Global_Coor()[0]
         y = self.spot.get_Global_Coor()[1]
 
 
@@ -262,8 +270,8 @@ class Spot_gym(gym.Env):
 
         if self.step_num > 1000:
             done = True
-        elif np.abs(roll) > np.deg2rad(45) or np.abs(pitch) > np.deg2rad(45) or np.abs(yaw) > np.deg2rad(45) or y > 0.5:
-            reward = -10
+        elif np.abs(roll) > np.deg2rad(45) or np.abs(pitch) > np.deg2rad(45) or np.abs(yaw) > np.deg2rad(45) or y > 0.5 or x <-0.3:
+            reward = -5
             done = True
         else:
             done = False
@@ -348,18 +356,18 @@ if __name__ == '__main__':
 
     env = Spot_gym(render=True)
     # # -----------------training---------------#
-    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 6e-4)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1,batch_size=512,learning_rate= 3e-4)
     # model = PPO(policy="MlpPolicy", env=env, verbose=1,tensorboard_log="./result/",learning_rate= 3e-4)
     # t1 = time.time()
-    # model.learn(6000000)
-    # model.save('result/train_result_6m_te0.2')
+    # model.learn(2000000)
+    # model.save('result/train_result_2m_slope_realobs')
     # t2 = time.time()
     # print(t2-t1)
     # -----------------training---------------#
 
     # # ------------------test for no rl--------#
-    model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
-    env.test_no_RL(model,5,0.01)
+    # model = PPO(policy="MlpPolicy", env=env, verbose=1, batch_size=512)
+    # env.test_no_RL(model,5,0.01)
     # ------------------test for no rl--------#
 
     # ----------------multi thread------------#
@@ -367,6 +375,6 @@ if __name__ == '__main__':
     #-----------------multi thread------------#
 
     # -----------------test---------------#
-    # loaded_model = PPO.load('result/train_result_6m_te0.2')
+    # loaded_model = PPO.load('result/train_result_2m_slope_realobs')
     # env.test_model(loaded_model,5,0.01)
     # -----------------test---------------#

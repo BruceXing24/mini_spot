@@ -30,7 +30,7 @@ class Spot:
         self.sit_pose = [[0,0,0],[0,0,0],[0,np.pi/3,-np.pi*2/3],[0,np.pi/3,-np.pi*2/3]]
         self.tg = Bezier(step_length=0.03,height=0.05)
 
-        self.gait_generator = CPG(step_length=0.025,ground_clearance=0.025,Tswing=0.3,Tstance=0.3,initial_x=0.0)
+        self.gait_generator = CPG(step_length=0.03,ground_clearance=0.03,Tswing=0.3,Tstance=0.3,initial_x=-0.0)
         self.control_fre = 50
         self.t13 =  0.0
         self.t24 = 0 - 0.5
@@ -49,18 +49,18 @@ class Spot:
                                                    # useFixedBase = 1
                                                    )
 
-        self.slope = self.pybullet_client.loadURDF("../urdf/slope/slope.urdf",
-                                                   [2.5, 0, 0.0],
-                                                   baseOrientation = self.pybullet_client.getQuaternionFromEuler([0, 0, 0]),
-                                                   # flags=p.URDF_USE_INERTIA_FROM_FILE,
-                                                   useFixedBase = 1
-                                                   )
+        # self.slope = self.pybullet_client.loadURDF("../urdf/slope/slope.urdf",
+        #                                            [2.5, 0, 0.0],
+        #                                            baseOrientation = self.pybullet_client.getQuaternionFromEuler([0, 0, 0]),
+        #                                            # flags=p.URDF_USE_INERTIA_FROM_FILE,
+        #                                            useFixedBase = 1
+        #                                            )
+        #
+        # p.changeDynamics(self.slope, linkIndex = -1, lateralFriction = 1.0 )
 
-        p.changeDynamics(self.slope, linkIndex = -1, lateralFriction = 1.0 )
 
-
-        for i in range(4):
-            p.changeDynamics(self.robot, linkIndex=i*5 + 4, lateralFriction=1.0)
+        # for i in range(4):
+        #     p.changeDynamics(self.robot, linkIndex=i*5 + 4, lateralFriction=1.0)
 
 
         num = p.getNumJoints(self.robot)
